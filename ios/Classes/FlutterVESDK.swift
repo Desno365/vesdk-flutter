@@ -4,6 +4,24 @@ import ImglyKit
 import imgly_sdk
 import AVFoundation
 
+// Helper extension for replacing default icons with custom icons.
+// Source: https://img.ly/docs/vesdk/ios/guides/user-interface/customize-icons/
+private extension UIImage {
+    /// Create a new icon image for a specific size by centering the input image and optionally applying alpha blending.
+    /// - Parameters:
+    ///   - pt: Icon size in point (pt).
+    ///   - alpha: Icon alpha value.
+    /// - Returns: A new icon image.
+    func icon(pt: CGFloat, alpha: CGFloat = 1) -> UIImage? {
+        UIGraphicsBeginImageContextWithOptions(CGSize(width: pt, height: pt), false, scale)
+        let position = CGPoint(x: (pt - size.width) / 2, y: (pt - size.height) / 2)
+        draw(at: position, blendMode: .normal, alpha: alpha)
+        let newImage = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+        return newImage
+    }
+}
+
 @available(iOS 13.0, *)
 public class FlutterVESDK: FlutterIMGLY, FlutterPlugin, VideoEditViewControllerDelegate {
 
@@ -152,6 +170,30 @@ public class FlutterVESDK: FlutterIMGLY, FlutterPlugin, VideoEditViewControllerD
     private func present(video: Video, configuration: IMGLYDictionary?, serialization: IMGLYDictionary?) {
         self.uuid = UUID()
         self.present(mediaEditViewControllerBlock: { (configurationData, serializationData) -> MediaEditViewController? in
+
+            // Customize icons.
+            // Source: https://img.ly/docs/vesdk/ios/guides/user-interface/customize-icons/
+
+            // This example replaces some of the default icons with symbol images provided by SF Symbols.
+            // Create a symbol configuration with scale variant large as the default is too small for our use case.
+            let config = UIImage.SymbolConfiguration(scale: .large)
+
+            // Set up the image replacement closure (once) before the editor is initialized.
+            IMGLY.bundleImageBlock = { imageName in
+                // Return replacement images for the requested image name.
+                // Most icon image names use the `pt` postfix which states the expected dimensions for the used image measured
+                // in points (pt), e.g., the postfix `_48pt` stands for an image of 48x48 pixels for scale factor 1.0 and 96x96
+                // pixels (@2x) as well as 144x144 pixels (@3x) for its high-resolution variants.
+                switch imageName {
+                    case "imgly_icon_save":
+                        return UIImage(systemName: "chevron.forward", withConfiguration: config)?.icon(pt: 44, alpha: 0.6)
+
+                    // Returning `nil` will use the default icon image.
+                    default:
+                        return nil
+                }
+            }
+
 
             var photoEditModel = PhotoEditModel()
             var videoEditViewController: VideoEditViewController
